@@ -1,0 +1,359 @@
+/* Тёмная фэнтезийная тема D&D-портала. */
+:root {
+  --bg: #14110f;
+  --bg-panel: #211c18;
+  --bg-panel-2: #2b241f;
+  --border: #3d332b;
+  --text: #ece3d4;
+  --text-dim: #a99a86;
+  --accent: #c0392b;
+  --accent-hover: #d8493a;
+  --gold: #d4af37;
+  --green: #6aa84f;
+  --radius: 10px;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: radial-gradient(circle at 50% 0%, #1e1813 0%, var(--bg) 70%);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+a {
+  color: var(--gold);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Georgia", "Times New Roman", serif;
+  color: var(--gold);
+  margin-top: 0;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--accent);
+  color: #fff;
+  padding: 9px 16px;
+  border-radius: var(--radius);
+  transition: background 0.15s, transform 0.05s;
+}
+button:hover {
+  background: var(--accent-hover);
+}
+button:active {
+  transform: translateY(1px);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button.secondary {
+  background: var(--bg-panel-2);
+  color: var(--text);
+}
+button.secondary:hover {
+  background: var(--border);
+}
+button.small {
+  padding: 5px 10px;
+  font-size: 0.85rem;
+}
+
+input,
+select {
+  font: inherit;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  width: 100%;
+}
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.center-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+}
+
+.error {
+  color: #ff8a80;
+  background: rgba(192, 57, 43, 0.12);
+  border: 1px solid rgba(192, 57, 43, 0.4);
+  padding: 10px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+.success {
+  color: #b9f6ca;
+  background: rgba(106, 168, 79, 0.12);
+  border: 1px solid rgba(106, 168, 79, 0.4);
+  padding: 10px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+/* Верхняя навигация */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 22px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+.nav .brand {
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  color: var(--gold);
+  font-weight: bold;
+}
+.nav .spacer {
+  flex: 1;
+}
+.nav a {
+  color: var(--text);
+}
+.nav .badge {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 22px;
+}
+
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.card h3 {
+  margin-bottom: 6px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.muted {
+  color: var(--text-dim);
+  font-size: 0.88rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th,
+td {
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+th {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  border: 1px solid var(--border);
+}
+.tag.admin {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.tag.dm {
+  color: #7cc4ff;
+  border-color: #7cc4ff;
+}
+.tag.player {
+  color: var(--text-dim);
+}
+
+/* Экран игровой комнаты */
+.room-layout {
+  display: flex;
+  height: calc(100vh - 53px);
+}
+.map-area {
+  flex: 1;
+  overflow: hidden;
+  background: #0d0b0a;
+  position: relative;
+}
+.sidebar {
+  width: 340px;
+  border-left: 1px solid var(--border);
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.sidebar-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dice-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.dice-buttons button {
+  padding: 8px 0;
+}
+
+.roll-log {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.roll-entry {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}
+.roll-entry .total {
+  color: var(--gold);
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+.roll-entry.crit .total {
+  color: var(--green);
+}
+.roll-entry.fail .total {
+  color: var(--accent);
+}
+
+.char-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+.char-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+
+.banner {
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  color: var(--gold);
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+/* ---------- Порядок ходов в бою ---------- */
+.init-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.init-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+/* Тот, чей сейчас ход, — золотой рамкой, как и подсветка фишки на карте. */
+.init-row.active {
+  background: rgba(212, 175, 55, 0.14);
+  border-color: var(--gold);
+}
+.init-num {
+  width: 12px;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+.init-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.init-input {
+  width: 52px;
+  padding: 3px 6px;
+  text-align: center;
+}
+.init-value {
+  min-width: 24px;
+  text-align: right;
+  color: var(--gold);
+}

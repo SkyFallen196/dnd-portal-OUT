@@ -1,0 +1,398 @@
+/* Пергаментный «Свиток героя». Всё scoped под .hero-scroll / .hero-page,
+   чтобы не пересекаться с тёмной темой остального приложения.
+   Вдохновлено стилем из проекта-референса (Cinzel + Libre Baskerville, пергамент). */
+
+.hero-page {
+  --parch-ink: #2f1d0b;
+  --parch-ink-soft: #4a3720;
+  --parch-line: #a77b4d;
+  --parch-field: #fbf3df;
+  --parch-btn: #7e5d3a;
+}
+
+/* Пергаментный контейнер */
+.hero-scroll {
+  max-width: 1100px;
+  margin: 0 auto;
+  background: linear-gradient(145deg, #c9b692 0%, #efddc5 30%, #f3e7d3 70%, #dac8a8 100%);
+  border: 16px solid transparent;
+  border-image: repeating-linear-gradient(45deg, #9b7b4d, #b89e75 10px, #7a5c3a 15px, #b89e75 20px) 30 stretch;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 2px #5d3f1e inset, 0 0 20px #aa7e54 inset;
+  border-radius: 30px 10px 30px 10px;
+  padding: 28px;
+  color: var(--parch-ink);
+  font-family: "Libre Baskerville", "Times New Roman", serif;
+}
+
+.hs-title {
+  text-align: center;
+  margin-bottom: 24px;
+  border-bottom: 3px double #9b6f47;
+  padding-bottom: 14px;
+}
+.hs-title h1 {
+  font-family: "Cinzel", serif;
+  font-size: 2.4rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 5px;
+  color: #382812;
+  text-shadow: 2px 2px 0 #ba9f7b, 4px 4px 0 rgba(60, 40, 20, 0.3);
+  margin: 0;
+}
+.hs-title p {
+  font-style: italic;
+  color: var(--parch-ink-soft);
+  margin-top: 6px;
+  letter-spacing: 2px;
+}
+
+.hs-error {
+  background: rgba(150, 40, 20, 0.15);
+  border: 2px solid #9b3b22;
+  color: #6b1f0e;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* ---- Форма ---- */
+.hs-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.hs-section {
+  background: linear-gradient(165deg, #cfbc99, #f7ecd6);
+  padding: 18px;
+  border: 4px double var(--parch-line);
+  border-radius: 30px 10px 30px 10px;
+}
+.hs-section.full {
+  grid-column: 1 / -1;
+}
+.hs-section h3 {
+  font-family: "Cinzel", serif;
+  color: var(--parch-ink);
+  margin: 0 0 14px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.hs-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.hs-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.hs-field {
+  display: flex;
+  flex-direction: column;
+}
+.hs-field label {
+  font-family: "Cinzel", serif;
+  font-size: 0.85rem;
+  color: var(--parch-ink-soft);
+  margin-bottom: 5px;
+  letter-spacing: 0.5px;
+}
+.hero-scroll input,
+.hero-scroll textarea,
+.hero-scroll select {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--parch-field);
+  border: 2px solid var(--parch-line);
+  border-radius: 15px 5px 15px 5px;
+  font-family: "Libre Baskerville", serif;
+  color: #281e10;
+  font-size: 1rem;
+}
+.hero-scroll input:focus,
+.hero-scroll textarea:focus,
+.hero-scroll select:focus {
+  outline: none;
+  border-color: #dbb47a;
+  background: #fff7e9;
+  box-shadow: 0 0 10px #ffbb66;
+}
+.hero-scroll textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+/* Портрет */
+.hs-portrait-row {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+.hs-portrait-preview {
+  width: 140px;
+  height: 190px;
+  flex-shrink: 0;
+  border: 4px solid var(--parch-line);
+  border-radius: 20px 5px 20px 5px;
+  overflow: hidden;
+  background: var(--parch-field);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #896b41;
+  font-size: 0.85rem;
+  text-align: center;
+}
+.hs-portrait-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Позиция кадрирования портрета */
+.hs-crop-center img { object-position: center; }
+.hs-crop-top img { object-position: top; }
+.hs-crop-bottom img { object-position: bottom; }
+.hs-crop-left img { object-position: left; }
+.hs-crop-right img { object-position: right; }
+
+.hs-portrait-controls {
+  flex: 1;
+}
+
+/* Кнопки */
+.hs-btn {
+  display: inline-block;
+  padding: 12px 26px;
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #ffefcf;
+  background: linear-gradient(145deg, #684e2e, #9e7a50);
+  border: 3px ridge #deb887;
+  border-radius: 40px 10px 40px 10px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  box-shadow: 0 5px 0 #4f3e28;
+  transition: 0.12s;
+  text-transform: uppercase;
+}
+.hs-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 0 #4f3e28;
+}
+.hs-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #4f3e28;
+}
+.hs-btn.ghost {
+  background: transparent;
+  color: var(--parch-ink);
+  box-shadow: 0 4px 0 #9b7b4d;
+}
+.hs-btn.danger {
+  background: linear-gradient(145deg, #7a2e1c, #a3452c);
+  box-shadow: 0 5px 0 #4a1c10;
+}
+.hs-btn.small {
+  padding: 7px 14px;
+  font-size: 0.8rem;
+  box-shadow: 0 4px 0 #4f3e28;
+}
+
+.hs-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 6px;
+}
+
+/* Список свитков (карточки) */
+.hs-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.hs-cards {
+  display: grid;
+  /* 260px — минимум, при котором в строку помещаются портрет и имя героя.
+     Раньше было 220px: портрет и столбик кнопок съедали всю ширину, телу карточки
+     оставался 1px, и длинное имя вылезало прямо под кнопки. */
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.hs-card {
+  background: linear-gradient(165deg, #cfbc99, #f7ecd6);
+  border: 4px double var(--parch-line);
+  border-radius: 20px 6px 20px 6px;
+  padding: 14px;
+  display: flex;
+  /* Портрет и имя стоят в строку, кнопки переносятся под них (см. .hs-card-actions).
+     Так карточка не ломается ни на узком экране, ни от длинного имени. */
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.hs-card-portrait {
+  width: 60px;
+  height: 76px;
+  flex-shrink: 0;
+  border: 3px solid var(--parch-line);
+  border-radius: 12px 4px 12px 4px;
+  overflow: hidden;
+  background: var(--parch-field);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+}
+.hs-card-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hs-card-body {
+  /* Базис 90px, а не 0: имя требует себе место, а не схлопывается в ноль. */
+  flex: 1 1 90px;
+  min-width: 0;
+}
+.hs-card-name {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  color: var(--parch-ink);
+  font-size: 1.05rem;
+  /* Длинные имена переносятся, а не вылезают за карточку. */
+  overflow-wrap: anywhere;
+}
+.hs-card-sub {
+  color: var(--parch-ink-soft);
+  font-size: 0.85rem;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+.hs-card-actions {
+  /* width: 100% заставляет кнопки перенестись на отдельную строку под портретом. */
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Уведомление об успехе */
+.hs-notice {
+  background: rgba(70, 120, 50, 0.18);
+  border: 2px solid #4f7a35;
+  color: #33501f;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* Блок выбора комнаты под карточкой героя */
+.hs-place {
+  background: linear-gradient(165deg, #e2d3b4, #f7ecd6);
+  border: 3px dashed var(--parch-line);
+  border-radius: 6px 20px 6px 20px;
+  padding: 12px 14px;
+  margin-top: 6px;
+}
+.hs-place-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.hs-muted {
+  color: var(--parch-ink-soft);
+  font-style: italic;
+}
+
+/* Пояснение про синхронизацию со фишками */
+.hs-sync-note {
+  grid-column: 1 / -1;
+  text-align: center;
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  border-top: 2px dotted #b5895a;
+  padding-top: 12px;
+}
+.hs-subheading {
+  font-family: "Cinzel", serif;
+  color: #efddc5;
+  margin: 26px 0 12px;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 760px) {
+  .hs-form {
+    grid-template-columns: 1fr;
+  }
+  .hs-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .hs-portrait-row {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+/* ---------- Свиток поверх игровой комнаты ---------- */
+/* Открывается модальным окном, чтобы не уходить со страницы комнаты:
+   уход разрывает WebSocket и заново грузит карту с фишками. */
+.hero-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(10, 8, 6, 0.72);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+.hero-modal {
+  position: relative;
+  width: 100%;
+  max-width: 1000px;
+  margin: auto;
+}
+.hero-modal .hero-page {
+  padding: 0;
+  min-height: 0;
+}
+.hero-modal-close {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px ridge #deb887;
+  background: linear-gradient(145deg, #7a2e1c, #a3452c);
+  color: #ffefcf;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #4a1c10;
+}
+.hero-modal-close:hover {
+  transform: translateY(-2px);
+}
+
+@media (max-width: 760px) {
+  .hero-modal-close {
+    top: 2px;
+    right: 2px;
+  }
+}
