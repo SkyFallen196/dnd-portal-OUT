@@ -1,0 +1,78 @@
+# Перед первым запуском: copy .env.example .env  и заполни секреты в .env
+#
+# Запуск:      docker compose up -d --build
+# Открыть:     http://localhost:8080   (фронтенд)
+#              http://localhost:8000/docs (API)
+# Остановить:  docker compose down          (данные сохраняются)
+#              docker compose down -v       (удалить и данные)
+#
+# Пароли и секреты берутся из файла .env рядом с этим файлом и в git не попадают.
+# Запись ${ИМЯ:?текст} означает «без этой переменной не запускаться» — так забытый
+# секрет обнаружится сразу, а не превратится в дырку в безопасности.
+
+services:
+  db:
+    image: postgres:16
+    container_name: dnd_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dnd}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задай POSTGRES_PASSWORD в файле .env}
+      POSTGRES_DB: ${POSTGRES_DB:-dnd_portal}
+    ports:
+      # По умолчанию база слушает только localhost — снаружи к ней не подключиться.
+      - "${DB_PORT:-127.0.0.1:5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dnd} -d ${POSTGRES_DB:-dnd_portal}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  backend:
+    build: ./backend
+    container_name: dnd_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-dnd}:${POSTGRES_PASSWORD:?задай POSTGRES_PASSWORD в файле .env}@db:5432/${POSTGRES_DB:-dnd_portal}
+      JWT_SECRET: ${JWT_SECRET:?задай JWT_SECRET в файле .env}
+      ACCESS_TOKEN_EXPIRE_MINUTES: 10080
+      FRONTEND_ORIGIN: http://localhost:8080
+      # Данные первого администратора (создаётся при первом запуске).
+      # Логин необязателен (по умолчанию admin), email и пароль — обязательны, из .env.
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?задай ADMIN_EMAIL в файле .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?задай ADMIN_PASSWORD в файле .env}
+    # 1) применяем миграции Alembic (создают/обновляют таблицы),
+    # 2) создаём админа, если его ещё нет, 3) запускаем сервер.
+    # Если миграция упадёт — сервер не стартует, и это правильно: работать
+    # с неизвестной схемой БД опаснее, чем честно упасть.
+    command: >
+      sh -c "alembic upgrade head &&
+             (python seed_admin.py || true) &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/app/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+        VITE_WS_URL: ws://localhost:8000
+    container_name: dnd_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  pgdata:
+  uploads:
