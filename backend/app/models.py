@@ -52,6 +52,10 @@ class Room(Base):
     active_map_id: Mapped[int | None] = mapped_column(ForeignKey("maps.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    # Сторона клетки сетки в пикселях карты. 0 — сетки нет.
+    # Одна клетка = 5 футов (стандарт D&D), от неё же считает линейка.
+    grid_size: Mapped[int] = mapped_column(Integer, default=0)
+
     # Состояние боя. 0 — боя нет, иначе номер текущего раунда.
     combat_round: Mapped[int] = mapped_column(Integer, default=0)
     # Чья сейчас очередь ходить. None — бой не идёт (или фишку убрали с карты).
@@ -131,6 +135,9 @@ class Token(Base):
     initiative: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Скрытая фишка видна только мастеру (засады, ещё не встреченные монстры).
     hidden: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Порядок отрисовки: чем больше, тем выше фишка лежит. Нужно, когда фишки
+    # налезают друг на друга (толпа в дверях) и нижнюю не подцепить мышью.
+    z: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     room: Mapped["Room"] = relationship("Room", back_populates="tokens", foreign_keys=[room_id])
@@ -175,6 +182,26 @@ class HeroSheet(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class Handout(Base):
+    """Заметка или раздаточный материал комнаты.
+
+    Мастер готовит их заранее (описание таверны, текст письма, портрет NPC, карта города)
+    и по ходу игры открывает партии кнопкой. Пока `is_public` выключен, материал виден
+    только мастеру — как и скрытые фишки, он не должен доходить до игроков вообще,
+    поэтому фильтрация идёт на сервере.
+    """
+    __tablename__ = "handouts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    room_id: Mapped[int] = mapped_column(ForeignKey("rooms.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    body: Mapped[str] = mapped_column(Text, default="")
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class DiceRoll(Base):
     """Запись броска костей (журнал)."""
     __tablename__ = "dice_rolls"
@@ -187,6 +214,10 @@ class DiceRoll(Base):
     modifier: Mapped[int] = mapped_column(Integer, default=0)
     total: Mapped[int] = mapped_column(Integer)
     roll_type: Mapped[str] = mapped_column(String(20), default="normal")  # normal|advantage|disadvantage
+    # Приватный бросок мастера: игроки его не видят ни в журнале, ни в рассылке.
+    # Нужен для скрытых проверок (заметил ли игрок засаду) — если бросок виден,
+    # партия по одному его наличию понимает, что что-то происходит.
+    private: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     user: Mapped["User"] = relationship("User")

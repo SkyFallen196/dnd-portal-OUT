@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, errorMessage } from "../api/client";
-import type { CombatState, DiceRoll, RoomDetail, Token } from "../api/types";
+import type { CombatState, DiceRoll, Handout, RoomDetail, Token } from "../api/types";
 import { useAuth } from "../store/auth";
 import { useAdminEdit } from "../store/adminEdit";
 import { useRoomSocket } from "../hooks/useRoomSocket";
@@ -12,6 +12,8 @@ import DMPanel from "../components/DMPanel";
 import RoleTags from "../components/RoleTags";
 import HeroSheetModal from "../components/HeroSheetModal";
 import InitiativePanel from "../components/InitiativePanel";
+import HandoutsPanel from "../components/HandoutsPanel";
+import HandoutModal from "../components/HandoutModal";
 
 export default function RoomPage() {
   const { roomId } = useParams();
@@ -23,6 +25,10 @@ export default function RoomPage() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [rolls, setRolls] = useState<DiceRoll[]>([]);
   const [combat, setCombat] = useState<CombatState>({ round: 0, current_token_id: null, order: [] });
+  const [handouts, setHandouts] = useState<Handout[]>([]);
+  const [openHandout, setOpenHandout] = useState<Handout | null>(null);
+  // Линейка: пока включена, карта не таскается, а клики меряют расстояние.
+  const [rulerActive, setRulerActive] = useState(false);
   // error — только фатальное (комнату не удалось загрузить), оно подменяет весь экран.
   // actionError — обычная неудача действия («сейчас не ваш ход»): показываем полоской,
   // не выкидывая игрока из комнаты посреди боя.
@@ -47,6 +53,17 @@ export default function RoomPage() {
     return () => setAdminEdit(false);
   }, [setAdminEdit]);
 
+  // Esc выключает линейку. Если открыт свиток или материал — Esc сначала закрывает его
+  // (у модалок свой обработчик), а линейку не трогаем, чтобы одно нажатие не делало два дела.
+  useEffect(() => {
+    if (!rulerActive) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !sheet && !openHandout) setRulerActive(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [rulerActive, sheet, openHandout]);
+
   const loadRoom = useCallback(async () => {
     const { data } = await api.get<RoomDetail>(`/rooms/${id}`);
     setRoom(data);
@@ -66,11 +83,17 @@ export default function RoomPage() {
         setRolls(data);
         const c = await api.get<CombatState>(`/rooms/${id}/combat`);
         setCombat(c.data);
+        const h = await api.get<Handout[]>(`/rooms/${id}/handouts`);
+        setHandouts(h.data);
       } catch (err) {
         setError(errorMessage(err));
       }
     })();
-  }, [id, loadRoom, loadTokens]);
+    // adminEdit в зависимостях не случайно: сервер отдаёт разный набор данных
+    // наблюдателю и мастеру (скрытые фишки, скрытые броски, неопубликованные материалы).
+    // Сокет переподключается сам, а вот загруженное по REST без перезапроса осталось бы
+    // прежним — админ включал бы режим правки и не понимал, почему ничего не появилось.
+  }, [id, loadRoom, loadTokens, adminEdit]);
 
   // Обработка событий реального времени.
   const onMessage = useCallback((msg: any) => {
@@ -95,6 +118,23 @@ export default function RoomPage() {
       case "combat_updated":
         // Состояние боя приходит целиком — просто заменяем.
         setCombat(msg.combat);
+        break;
+      case "handout_updated":
+        setHandouts((prev) => {
+          const exists = prev.some((h) => h.id === msg.handout.id);
+          return exists ? prev.map((h) => (h.id === msg.handout.id ? msg.handout : h)) : [...prev, msg.handout];
+        });
+        // Открытый материал мастер мог тут же и поправить — обновляем и в модалке.
+        setOpenHandout((prev) => (prev && prev.id === msg.handout.id ? msg.handout : prev));
+        break;
+      case "handout_removed":
+        setHandouts((prev) => prev.filter((h) => h.id !== msg.handout_id));
+        // Материал спрятали или удалили, пока игрок его читал, — закрываем окно.
+        setOpenHandout((prev) => (prev && prev.id === msg.handout_id ? null : prev));
+        break;
+      case "room_updated":
+        // Мастер поменял настройки комнаты (пока это только сетка).
+        setRoom((prev) => (prev ? { ...prev, grid_size: msg.grid_size } : prev));
         break;
       case "map_changed":
         // Мастер сменил карту — подменяем её у всех, кто сидит в комнате.
@@ -143,10 +183,11 @@ export default function RoomPage() {
     }
   };
 
-  const handleRoll = async (formula: string, rollType: string) => {
+  const handleRoll = async (formula: string, rollType: string, isPrivate: boolean) => {
     try {
       // Результат прилетит всем (и нам) через WebSocket-событие dice_rolled.
-      await api.post(`/rooms/${id}/roll`, { formula, roll_type: rollType });
+      // Скрытый бросок сервер разошлёт только мастерам.
+      await api.post(`/rooms/${id}/roll`, { formula, roll_type: rollType, private: isPrivate });
     } catch (err) {
       setActionError(errorMessage(err));
     }
@@ -218,7 +259,27 @@ export default function RoomPage() {
             onMoveEnd={(tokenId, x, y) => sendMove(tokenId, x, y)}
             onSelect={openTokenSheet}
             activeTokenId={combat.current_token_id}
+            gridSize={room.grid_size}
+            rulerActive={rulerActive}
           />
+          <div className="map-tools">
+            <button
+              className={rulerActive ? "small" : "secondary small"}
+              onClick={() => setRulerActive((v) => !v)}
+              title={
+                room.grid_size
+                  ? "Замерить расстояние: клик — начало, клик — конец"
+                  : "Замер будет в пикселях: мастер ещё не настроил сетку"
+              }
+            >
+              📏 {rulerActive ? "Линейка: ВКЛ" : "Линейка"}
+            </button>
+            {rulerActive && (
+              <span className="map-tools-hint">
+                Клик — начало, клик — конец. Фишки пока не двигаются.
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="sidebar">
@@ -232,10 +293,13 @@ export default function RoomPage() {
             />
           </div>
           <div className="sidebar-section">
-            <DiceRoller onRoll={handleRoll} />
+            <DiceRoller onRoll={handleRoll} canRollPrivate={isDM} />
           </div>
           <div className="sidebar-section">
             <RollLog rolls={rolls} />
+          </div>
+          <div className="sidebar-section">
+            <HandoutsPanel roomId={id} handouts={handouts} isDM={isDM} onOpen={setOpenHandout} />
           </div>
           {isDM && (
             <DMPanel
@@ -253,6 +317,8 @@ export default function RoomPage() {
       {sheet && (
         <HeroSheetModal heroId={sheet.heroId} token={sheet.token} onClose={() => setSheet(null)} />
       )}
+
+      {openHandout && <HandoutModal handout={openHandout} onClose={() => setOpenHandout(null)} />}
     </div>
   );
 }

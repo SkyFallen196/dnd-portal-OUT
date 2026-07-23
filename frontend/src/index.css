@@ -75,7 +75,8 @@ button.small {
 }
 
 input,
-select {
+select,
+textarea {
   font: inherit;
   background: var(--bg);
   color: var(--text);
@@ -84,8 +85,13 @@ select {
   padding: 9px 12px;
   width: 100%;
 }
+textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: none;
   border-color: var(--gold);
 }
@@ -292,6 +298,22 @@ th {
 .roll-entry.fail .total {
   color: var(--accent);
 }
+/* Скрытый бросок мастера — заметно отличается от общих, чтобы не перепутать. */
+.roll-entry.private {
+  border-style: dashed;
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.07);
+}
+.roll-entry .private-tag {
+  color: var(--gold);
+  border-color: var(--gold);
+  margin-left: 6px;
+}
+/* Кость, отброшенная при преимуществе или помехе: в итог она не пошла. */
+.die-dropped {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
 
 .char-item {
   display: flex;
@@ -315,6 +337,86 @@ th {
   border-radius: var(--radius);
   margin-bottom: 16px;
   font-size: 0.9rem;
+}
+
+/* ---------- Инструменты поверх карты (линейка) ---------- */
+.map-tools {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 5;
+}
+.map-tools-hint {
+  background: rgba(20, 17, 15, 0.85);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* ---------- Раздаточные материалы ---------- */
+.handout-title {
+  flex: 1;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.handout-title:hover {
+  color: var(--gold);
+}
+/* Кнопка-обёртка над скрытым <input type="file"> — выглядит как обычная small-кнопка. */
+.file-button {
+  cursor: pointer;
+  padding: 5px 8px;
+  font-size: 0.85rem;
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin: 0;
+  flex-shrink: 0;
+}
+.handout-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 50;
+}
+.handout-modal {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.handout-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 10px;
+}
+.handout-image {
+  display: block;
+  width: 100%;
+  max-height: 45vh;
+  object-fit: contain;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+/* pre-wrap сохраняет абзацы и переносы так, как их набрал мастер. */
+.handout-body {
+  white-space: pre-wrap;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 /* ---------- Порядок ходов в бою ---------- */

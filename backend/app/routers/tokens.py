@@ -62,7 +62,9 @@ def list_tokens(
     query = select(Token).where(Token.room_id == room_id)
     if not is_room_dm(room, user, admin_edit):
         query = query.where(Token.hidden.is_(False))
-    return list(db.scalars(query))
+    # Порядок отрисовки: снизу вверх по z. При равном z — по id, чтобы у всех
+    # за столом фишки лежали одинаково, а не как повезёт с порядком в выдаче.
+    return list(db.scalars(query.order_by(Token.z, Token.id)))
 
 
 @router.post("", response_model=TokenOut)
@@ -118,9 +120,13 @@ async def update_token(
 
     was_hidden = tk.hidden
     fields = data.model_dump(exclude_unset=True)
-    only_moving = set(fields.keys()) <= {"x", "y"}
+    changed = set(fields.keys())
+    only_moving = changed <= {"x", "y"}
+    # Владельцу, кроме перемещения, разрешён и z: поднять свою фишку из-под чужой —
+    # часть обычной игры, а не правка характеристик персонажа.
+    owner_allowed = changed <= {"x", "y", "z"}
 
-    if not is_dm and not (is_owner and only_moving):
+    if not is_dm and not (is_owner and owner_allowed):
         raise HTTPException(status_code=403, detail="Нет прав менять эту фишку")
 
     for key, value in fields.items():
@@ -221,4 +227,5 @@ def token_payload(tk: Token) -> dict:
         "effects": tk.effects or [],
         "initiative": tk.initiative,
         "hidden": tk.hidden,
+        "z": tk.z,
     }

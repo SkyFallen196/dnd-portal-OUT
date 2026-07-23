@@ -1,8 +1,11 @@
 """Уборка файлов-сирот в папке uploads.
 
 Сирота — файл, который лежит на диске, но на который не ссылается ни одна запись в базе
-(ни карта, ни картинка фишки, ни портрет свитка). Такие файлы копились, пока приложение
-не умело удалять их само.
+(ни карта, ни картинка фишки, ни портрет свитка, ни раздаточный материал). Такие файлы
+копились, пока приложение не умело удалять их само.
+
+ВАЖНО: добавляя новую сущность с картинкой, допиши её и сюда — иначе скрипт посчитает
+живые файлы сиротами и удалит их.
 
 Запуск (из папки backend):
     python cleanup_uploads.py          # только показать, что будет удалено
@@ -17,7 +20,7 @@ import sys
 from sqlalchemy import select
 
 from app.database import SessionLocal
-from app.models import HeroSheet, MapImage, Token
+from app.models import Handout, HeroSheet, MapImage, Token
 from app.storage import UPLOAD_DIR
 
 
@@ -27,6 +30,7 @@ def used_filenames(db) -> set[str]:
     urls += list(db.scalars(select(MapImage.file_path)))
     urls += list(db.scalars(select(Token.avatar_url)))
     urls += list(db.scalars(select(HeroSheet.portrait_url)))
+    urls += list(db.scalars(select(Handout.image_url)))
     return {os.path.basename(u) for u in urls if u}
 
 

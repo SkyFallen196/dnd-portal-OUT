@@ -19,6 +19,7 @@ from ..schemas import (
     RoomDetailOut,
     RoomJoinIn,
     RoomOut,
+    RoomUpdateIn,
 )
 from ..security import admin_edit_mode, require_active_subscription
 from ..storage import delete_upload_if_unused, delete_uploads_if_unused, room_file_urls
@@ -47,6 +48,7 @@ def _room_detail(db: Session, room: Room) -> RoomDetailOut:
         dm_id=room.dm_id,
         invite_code=room.invite_code,
         active_map_id=room.active_map_id,
+        grid_size=room.grid_size,
         created_at=room.created_at,
         members=members,
         active_map=MapOut.model_validate(active_map) if active_map else None,
@@ -123,6 +125,33 @@ def get_room(
 ) -> RoomDetailOut:
     room = get_room_or_404(db, room_id)
     ensure_member(db, room, user)
+    return _room_detail(db, room)
+
+
+@router.patch("/{room_id}", response_model=RoomDetailOut)
+async def update_room(
+    room_id: int,
+    data: RoomUpdateIn,
+    user: User = Depends(require_active_subscription),
+    admin_edit: bool = Depends(admin_edit_mode),
+    db: Session = Depends(get_db),
+) -> RoomDetailOut:
+    """Настройки комнаты (название, сетка). Меняет мастер.
+
+    Сетка живёт у комнаты, а не в браузере: масштаб подбирают под конкретную карту,
+    и линейка должна мерить одинаково у всех за столом.
+    """
+    room = get_room_or_404(db, room_id)
+    ensure_dm(room, user, admin_edit)
+
+    fields = data.model_dump(exclude_unset=True)
+    for key, value in fields.items():
+        setattr(room, key, value)
+    db.commit()
+    db.refresh(room)
+
+    if "grid_size" in fields:
+        await manager.broadcast(room_id, {"type": "room_updated", "grid_size": room.grid_size})
     return _room_detail(db, room)
 
 

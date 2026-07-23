@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import settings
-from .routers import admin, auth, codes, combat, dice, heroes, rooms, tokens, ws
+from .routers import admin, auth, codes, combat, dice, handouts, heroes, rooms, tokens, ws
 
 # Таблицы приложение больше НЕ создаёт само: схемой заведует Alembic.
 # Перед запуском сервера нужно выполнить (из папки backend):
@@ -37,6 +37,7 @@ app.include_router(rooms.router)
 app.include_router(tokens.router)
 app.include_router(dice.router)
 app.include_router(combat.router)
+app.include_router(handouts.router)
 app.include_router(heroes.router)
 app.include_router(admin.router)
 app.include_router(ws.router)

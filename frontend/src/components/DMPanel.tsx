@@ -144,8 +144,29 @@ export default function DMPanel({ room, tokens, onReload }: Props) {
     }
   };
 
+  // Слои: «наверх» — стать выше всех, «вниз» — уйти под всех. Абсолютные значения z
+  // не важны, важен только порядок, поэтому просто выходим за текущие границы.
+  const zTop = tokens.reduce((m, t) => Math.max(m, t.z || 0), 0);
+  const zBottom = tokens.reduce((m, t) => Math.min(m, t.z || 0), 0);
+
+  const setGrid = async (value: number) => {
+    setError("");
+    try {
+      // Сетка сменится у всех сразу — сервер разошлёт событие room_updated.
+      await api.patch(`/rooms/${room.id}`, { grid_size: Math.max(0, Math.min(500, value)) });
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  };
+
   const adjustHp = (t: Token, delta: number) =>
     patchToken(t, { hp: Math.max(0, Math.min(t.max_hp, t.hp + delta)) });
+  // Точное значение HP: вписать число вручную вместо шагов ±1/±5.
+  // Пустое поле игнорируем; больше максимума сервер всё равно обрежет.
+  const setHpExact = (t: Token, val: number) => {
+    if (Number.isNaN(val)) return;
+    patchToken(t, { hp: Math.max(0, Math.min(t.max_hp, val)) });
+  };
   const setMaxHp = (t: Token, val: number) => {
     if (!val || val < 1) return;
     patchToken(t, { max_hp: val, hp: Math.min(t.hp, val) });
@@ -217,6 +238,30 @@ export default function DMPanel({ room, tokens, onReload }: Props) {
           })}
         </div>
       )}
+
+      <div className="field">
+        <label>Сетка (одна клетка = 5 футов)</label>
+        <div className="row" style={{ gap: 6 }}>
+          <input
+            type="number"
+            min={0}
+            max={500}
+            // key сбрасывает поле, если сетку поменяли из другого места.
+            key={room.grid_size}
+            defaultValue={room.grid_size}
+            style={{ width: 90 }}
+            // Enter снимает фокус — срабатывает тот же onBlur, значение уходит одним запросом.
+            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+            onBlur={(e) => setGrid(Number(e.target.value))}
+          />
+          <button className="secondary small" disabled={!room.grid_size} onClick={() => setGrid(0)}>
+            Выключить
+          </button>
+        </div>
+        <p className="muted" style={{ margin: "4px 0 0" }}>
+          Сторона клетки в пикселях карты; 0 — сетки нет.
+        </p>
+      </div>
 
       <form onSubmit={createToken} style={{ marginTop: 8 }}>
         <label>Новая фишка (персонаж или NPC)</label>
@@ -342,7 +387,19 @@ export default function DMPanel({ room, tokens, onReload }: Props) {
                   <span className="muted" style={{ width: 34 }}>HP</span>
                   <button className="secondary small" onClick={() => adjustHp(t, -5)}>−5</button>
                   <button className="secondary small" onClick={() => adjustHp(t, -1)}>−1</button>
-                  <b style={{ minWidth: 26, textAlign: "center" }}>{t.hp}</b>
+                  {/* Клик по числу — вписать точное HP. key сбрасывает поле, когда HP
+                      меняют кнопками ±: тогда defaultValue берёт свежее значение. */}
+                  <input
+                    type="number"
+                    min={0}
+                    max={t.max_hp}
+                    key={t.hp}
+                    defaultValue={t.hp}
+                    title="Впишите точное значение"
+                    style={{ width: 56, textAlign: "center", padding: "3px 4px", fontWeight: "bold" }}
+                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                    onBlur={(e) => setHpExact(t, Number(e.target.value))}
+                  />
                   <button className="secondary small" onClick={() => adjustHp(t, 1)}>+1</button>
                   <button className="secondary small" onClick={() => adjustHp(t, 5)}>+5</button>
                 </div>
@@ -362,6 +419,24 @@ export default function DMPanel({ room, tokens, onReload }: Props) {
                   <button className="secondary small" onClick={() => adjustSize(t, -0.25)}>−</button>
                   <b style={{ minWidth: 44, textAlign: "center" }}>×{(t.size || 1).toFixed(2)}</b>
                   <button className="secondary small" onClick={() => adjustSize(t, 0.25)}>+</button>
+                </div>
+                {/* Слой: чтобы фишку не накрывала соседняя в толкучке */}
+                <div className="row" style={{ gap: 6, marginBottom: 8, alignItems: "center" }}>
+                  <span className="muted" style={{ width: 34 }}>Слой</span>
+                  <button
+                    className="secondary small"
+                    title="Поднять над остальными фишками"
+                    onClick={() => patchToken(t, { z: zTop + 1 })}
+                  >
+                    ⬆ наверх
+                  </button>
+                  <button
+                    className="secondary small"
+                    title="Убрать под остальные фишки"
+                    onClick={() => patchToken(t, { z: zBottom - 1 })}
+                  >
+                    ⬇ вниз
+                  </button>
                 </div>
                 {/* Эффекты */}
                 <div>
