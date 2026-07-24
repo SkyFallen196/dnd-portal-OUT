@@ -9,6 +9,9 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 MIN_TOKEN_SIZE = 0.4
 MAX_TOKEN_SIZE = 5.0
 MAX_HP_VALUE = 100_000
+# Сторона клетки сетки в пикселях. 0 — сетка выключена. Верхняя граница —
+# защита от опечатки вроде 10000, при которой клиент рисовал бы одну клетку на всю карту.
+MAX_GRID_SIZE = 500
 
 
 # ---------- Auth ----------
@@ -76,6 +79,13 @@ class RoomJoinIn(BaseModel):
     invite_code: str
 
 
+class RoomUpdateIn(BaseModel):
+    """Настройки комнаты, которые меняет мастер по ходу игры."""
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    # 0 — выключить сетку. Одна клетка всегда 5 футов.
+    grid_size: int | None = Field(default=None, ge=0, le=MAX_GRID_SIZE)
+
+
 class MemberOut(BaseModel):
     user_id: int
     username: str
@@ -98,6 +108,7 @@ class RoomOut(BaseModel):
     dm_id: int
     invite_code: str
     active_map_id: int | None
+    grid_size: int = 0  # 0 — сетки нет; иначе сторона клетки (5 футов) в пикселях
     created_at: datetime
 
 
@@ -135,6 +146,7 @@ class TokenUpdateIn(BaseModel):
     size: float | None = Field(default=None, ge=MIN_TOKEN_SIZE, le=MAX_TOKEN_SIZE)
     effects: list[StatusEffect] | None = Field(default=None, max_length=20)
     hidden: bool | None = None  # скрыть фишку от игроков
+    z: int | None = None  # порядок отрисовки: больше — выше
 
 
 class TokenOut(BaseModel):
@@ -155,6 +167,7 @@ class TokenOut(BaseModel):
     effects: list[StatusEffect] = []
     initiative: int | None = None  # None — фишка не участвует в текущем бою
     hidden: bool = False  # игрокам такие фишки вообще не отдаются
+    z: int = 0  # порядок отрисовки на карте
 
 
 # ---------- Combat (порядок ходов) ----------
@@ -184,6 +197,7 @@ class InitiativeIn(BaseModel):
 class RollIn(BaseModel):
     formula: str = Field(min_length=1, max_length=100)  # например "2d6+3" или "d20"
     roll_type: str = "normal"  # normal | advantage | disadvantage
+    private: bool = False  # скрытый бросок мастера; игроки его не увидят
 
 
 class RollOut(BaseModel):
@@ -197,6 +211,7 @@ class RollOut(BaseModel):
     modifier: int
     total: int
     roll_type: str
+    private: bool = False
     created_at: datetime
 
 
@@ -266,6 +281,30 @@ class HeroSheetSummary(BaseModel):
     name: str
     race: str
     portrait_url: str | None
+
+
+# ---------- Handouts (заметки и раздаточные материалы) ----------
+class HandoutIn(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+    body: str = Field(default="", max_length=20_000)
+    is_public: bool = False  # по умолчанию материал видит только мастер
+
+
+class HandoutUpdateIn(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=120)
+    body: str | None = Field(default=None, max_length=20_000)
+    is_public: bool | None = None
+
+
+class HandoutOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    room_id: int
+    title: str
+    body: str
+    image_url: str | None
+    is_public: bool
+    created_at: datetime
 
 
 # ---------- Admin ----------

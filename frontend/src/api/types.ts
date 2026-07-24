@@ -45,6 +45,8 @@ export interface Room {
   dm_id: number;
   invite_code: string;
   active_map_id: number | null;
+  // Сторона клетки сетки в пикселях карты. 0 — сетки нет. Одна клетка = 5 футов.
+  grid_size: number;
   created_at: string;
 }
 
@@ -76,6 +78,7 @@ export interface Token {
   effects: StatusEffect[];
   initiative: number | null; // null — фишка не в бою
   hidden: boolean; // скрыта от игроков; им такие фишки сервер вообще не отдаёт
+  z: number; // порядок отрисовки: больше — лежит выше
 }
 
 // Состояние боя в комнате. round === 0 — боя нет.
@@ -141,5 +144,19 @@ export interface DiceRoll {
   modifier: number;
   total: number;
   roll_type: string;
+  // Скрытый бросок мастера: игрокам сервер такие записи не отдаёт вовсе.
+  private: boolean;
+  created_at: string;
+}
+
+// Заметка или раздаточный материал комнаты. Пока is_public выключен,
+// материал видит только мастер (сервер его игрокам не присылает).
+export interface Handout {
+  id: number;
+  room_id: number;
+  title: string;
+  body: string;
+  image_url: string | null;
+  is_public: boolean;
   created_at: string;
 }

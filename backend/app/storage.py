@@ -10,7 +10,7 @@ import os
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import HeroSheet, MapImage, Token
+from .models import Handout, HeroSheet, MapImage, Token
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 URL_PREFIX = "/uploads/"
@@ -22,6 +22,7 @@ def is_referenced(db: Session, url: str) -> bool:
         select(Token.id).where(Token.avatar_url == url),
         select(HeroSheet.id).where(HeroSheet.portrait_url == url),
         select(MapImage.id).where(MapImage.file_path == url),
+        select(Handout.id).where(Handout.image_url == url),
     )
     return any(db.scalar(q.limit(1)) is not None for q in checks)
 
@@ -58,10 +59,11 @@ def delete_uploads_if_unused(db: Session, urls: list[str | None]) -> int:
 
 
 def room_file_urls(db: Session, room_id: int) -> list[str | None]:
-    """Все файлы, привязанные к комнате: её карты и картинки её фишек.
+    """Все файлы, привязанные к комнате: карты, картинки фишек и раздаточных материалов.
 
     Собирать НУЖНО до удаления комнаты — после каскадного удаления записей уже не найти.
     """
     maps = list(db.scalars(select(MapImage.file_path).where(MapImage.room_id == room_id)))
     avatars = list(db.scalars(select(Token.avatar_url).where(Token.room_id == room_id)))
-    return maps + avatars
+    images = list(db.scalars(select(Handout.image_url).where(Handout.room_id == room_id)))
+    return maps + avatars + images

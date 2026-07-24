@@ -1,8 +1,14 @@
-import { useEffect, useRef, useState } from "react";
-import { Circle, Group, Image as KImage, Layer, Rect, Stage, Text } from "react-konva";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Circle, Group, Image as KImage, Layer, Line, Rect, Stage, Text } from "react-konva";
 import type Konva from "konva";
 import type { Token } from "../api/types";
 import { API_URL } from "../api/client";
+
+// Одна клетка сетки — 5 футов. Это стандарт D&D, от него считает и линейка.
+const FEET_PER_CELL = 5;
+// Потолок на количество линий сетки: защита от крошечного шага, при котором
+// холст пришлось бы залить тысячами линий и всё бы встало.
+const MAX_GRID_LINES = 400;
 
 // Загружает картинку по url в объект Image, который умеет рисовать Konva.
 function useImg(url: string | null) {
@@ -24,6 +30,10 @@ interface Props {
   tokens: Token[];
   // Чей сейчас ход в бою — эту фишку обводим золотым, чтобы было видно с любого края карты.
   activeTokenId?: number | null;
+  // Сторона клетки в пикселях карты; 0 — сетку не рисуем.
+  gridSize?: number;
+  // Включён режим линейки: карта не таскается, клики меряют расстояние.
+  rulerActive?: boolean;
   canMove: (tk: Token) => boolean;
   onMove: (id: number, x: number, y: number) => void; // во время перетаскивания (throttle)
   onMoveEnd: (id: number, x: number, y: number) => void; // при отпускании мыши
@@ -32,6 +42,15 @@ interface Props {
 
 // Базовый радиус фишки; итоговый = BASE_RADIUS * tk.size.
 const BASE_RADIUS = 34;
+
+// Золотое кольцо «сейчас его ход» рисуется СНАРУЖИ фишки, поэтому её внешний край —
+// это не r, а r + ACTIVE_RING_OFFSET + половина толщины кольца.
+const ACTIVE_RING_OFFSET = 7;
+const ACTIVE_RING_WIDTH = 5;
+// Отступ от края фишки до нижней строки эффектов. Считается от кольца, а не подобран
+// на глаз: иначе значки бафов налезали бы на подсветку хода (и разъехались бы снова,
+// если размеры кольца когда-нибудь поменяют).
+const EFFECT_GAP = ACTIVE_RING_OFFSET + ACTIVE_RING_WIDTH / 2 + 5;
 
 // Как рисуется одна фишка: кружок с цветом или картинкой + имя + HP + эффекты.
 function TokenShape({
@@ -95,9 +114,9 @@ function TokenShape({
       {/* Чей сейчас ход: широкое золотое кольцо снаружи фишки */}
       {isActive && (
         <Circle
-          radius={r + 7}
+          radius={r + ACTIVE_RING_OFFSET}
           stroke="#d4af37"
-          strokeWidth={5}
+          strokeWidth={ACTIVE_RING_WIDTH}
           shadowColor="#d4af37"
           shadowBlur={16}
           shadowOpacity={1}
@@ -116,7 +135,7 @@ function TokenShape({
           align="center"
           width={240}
           offsetX={120}
-          y={-r - effFont - 2 - i * (effFont + 4)}
+          y={-r - effFont - EFFECT_GAP - i * (effFont + 4)}
           shadowColor="black"
           shadowBlur={4}
           shadowOpacity={1}
@@ -168,12 +187,56 @@ function TokenShape({
   );
 }
 
-export default function MapCanvas({ mapUrl, tokens, activeTokenId, canMove, onMove, onMoveEnd, onSelect }: Props) {
+// Две точки линейки в координатах карты.
+interface Measure {
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  done: boolean; // false — вторую точку ещё водят мышью
+}
+
+export default function MapCanvas({
+  mapUrl,
+  tokens,
+  activeTokenId,
+  gridSize = 0,
+  rulerActive = false,
+  canMove,
+  onMove,
+  onMoveEnd,
+  onSelect,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 800, height: 600 });
   const [scale, setScale] = useState(1);
   const image = useImg(mapUrl);
   const lastSent = useRef(0);
+  const [measure, setMeasure] = useState<Measure | null>(null);
+
+  // Порядок отрисовки: снизу вверх по z, при равном z — по id. Konva рисует
+  // в порядке массива, поэтому последняя фишка окажется поверх остальных.
+  const ordered = useMemo(
+    () => [...tokens].sort((a, b) => (a.z || 0) - (b.z || 0) || a.id - b.id),
+    [tokens]
+  );
+
+  // Размер поля под сетку: по карте, а если её нет — по заглушке.
+  const mapW = image?.width || 1000;
+  const mapH = image?.height || 700;
+
+  // Линии сетки пересчитываем только при смене шага или карты, а не на каждый кадр зума.
+  const gridLines = useMemo(() => {
+    if (!gridSize || gridSize <= 0) return [];
+    if (mapW / gridSize > MAX_GRID_LINES || mapH / gridSize > MAX_GRID_LINES) return [];
+    const lines: number[][] = [];
+    for (let x = 0; x <= mapW; x += gridSize) lines.push([x, 0, x, mapH]);
+    for (let y = 0; y <= mapH; y += gridSize) lines.push([0, y, mapW, y]);
+    return lines;
+  }, [gridSize, mapW, mapH]);
+
+  // Выход из режима линейки стирает недомеренное — иначе замер повиснет на карте.
+  useEffect(() => {
+    if (!rulerActive) setMeasure(null);
+  }, [rulerActive]);
 
   // Подгоняем размер холста под размер контейнера.
   useEffect(() => {
@@ -206,6 +269,30 @@ export default function MapCanvas({ mapUrl, tokens, activeTokenId, canMove, onMo
     }
   };
 
+  // Координаты указателя в системе самой карты: getRelativePointerPosition
+  // уже учитывает и зум, и сдвиг холста.
+  const pointer = (e: Konva.KonvaEventObject<MouseEvent>) =>
+    e.target.getStage()?.getRelativePointerPosition() ?? null;
+
+  // Линейка: первый клик ставит начало, второй фиксирует замер, третий начинает заново.
+  const handleClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (!rulerActive) return;
+    const p = pointer(e);
+    if (!p) return;
+    setMeasure((prev) =>
+      prev && !prev.done ? { ...prev, to: p, done: true } : { from: p, to: p, done: false }
+    );
+  };
+
+  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (!rulerActive) return;
+    setMeasure((prev) => {
+      if (!prev || prev.done) return prev;
+      const p = pointer(e);
+      return p ? { ...prev, to: p } : prev;
+    });
+  };
+
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
       <Stage
@@ -213,9 +300,13 @@ export default function MapCanvas({ mapUrl, tokens, activeTokenId, canMove, onMo
         height={size.height}
         scaleX={scale}
         scaleY={scale}
-        draggable
+        // В режиме линейки холст не таскаем: иначе клик по карте её панорамирует,
+        // а не ставит точку замера.
+        draggable={!rulerActive}
         onWheel={onWheel}
-        style={{ cursor: "grab" }}
+        onClick={handleClick}
+        onMouseMove={handleMouseMove}
+        style={{ cursor: rulerActive ? "crosshair" : "grab" }}
       >
         <Layer>
           {image ? (
@@ -233,19 +324,64 @@ export default function MapCanvas({ mapUrl, tokens, activeTokenId, canMove, onMo
             </>
           )}
 
-          {tokens.map((tk) => (
+          {/* Сетка поверх карты, но под фишками. listening=false — линии не должны
+              перехватывать клики по карте и по фишкам. */}
+          {gridLines.map((points, i) => (
+            <Line key={i} points={points} stroke="rgba(255,255,255,0.18)" strokeWidth={1} listening={false} />
+          ))}
+
+          {ordered.map((tk) => (
             <TokenShape
               key={tk.id}
               tk={tk}
-              movable={canMove(tk)}
+              // В режиме линейки фишки не двигаются: замер важнее случайного сдвига.
+              movable={canMove(tk) && !rulerActive}
               isActive={tk.id === activeTokenId}
               onDragMove={handleDragMove}
               onDragEnd={onMoveEnd}
-              onSelect={onSelect}
+              // При включённой линейке клик по фишке ставит точку замера, а не
+              // открывает свиток — иначе окно свитка перекрыло бы карту посреди измерения.
+              onSelect={rulerActive ? undefined : onSelect}
             />
           ))}
+
+          {measure && <Ruler measure={measure} gridSize={gridSize} scale={scale} />}
         </Layer>
       </Stage>
     </div>
+  );
+}
+
+// Линейка: пунктирная линия между двумя точками и подпись с расстоянием.
+function Ruler({ measure, gridSize, scale }: { measure: Measure; gridSize: number; scale: number }) {
+  const { from, to } = measure;
+  const dist = Math.hypot(to.x - from.x, to.y - from.y);
+  // Клетки округляем — на столе меряют клетками, а не пикселями.
+  const cells = gridSize > 0 ? Math.round(dist / gridSize) : 0;
+  const label = gridSize > 0 ? `${cells * FEET_PER_CELL} фт · ${cells} кл.` : `${Math.round(dist)} px`;
+
+  // Подпись не должна расти и уменьшаться вместе с зумом — держим её читаемой.
+  const font = 16 / scale;
+  const pad = 5 / scale;
+  const boxW = label.length * font * 0.58 + pad * 2;
+  const boxH = font + pad * 2;
+
+  return (
+    <Group listening={false}>
+      <Line
+        points={[from.x, from.y, to.x, to.y]}
+        stroke="#d4af37"
+        strokeWidth={3 / scale}
+        dash={[10 / scale, 6 / scale]}
+        shadowColor="black"
+        shadowBlur={4}
+      />
+      <Circle x={from.x} y={from.y} radius={5 / scale} fill="#d4af37" />
+      <Circle x={to.x} y={to.y} radius={5 / scale} fill="#d4af37" />
+      <Group x={to.x + 12 / scale} y={to.y - boxH - 6 / scale}>
+        <Rect width={boxW} height={boxH} fill="rgba(20,17,15,0.85)" stroke="#d4af37" strokeWidth={1 / scale} cornerRadius={4 / scale} />
+        <Text text={label} x={pad} y={pad} fontSize={font} fontStyle="bold" fill="#d4af37" />
+      </Group>
+    </Group>
   );
 }
