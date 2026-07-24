@@ -43,6 +43,15 @@ interface Props {
 // Базовый радиус фишки; итоговый = BASE_RADIUS * tk.size.
 const BASE_RADIUS = 34;
 
+// Золотое кольцо «сейчас его ход» рисуется СНАРУЖИ фишки, поэтому её внешний край —
+// это не r, а r + ACTIVE_RING_OFFSET + половина толщины кольца.
+const ACTIVE_RING_OFFSET = 7;
+const ACTIVE_RING_WIDTH = 5;
+// Отступ от края фишки до нижней строки эффектов. Считается от кольца, а не подобран
+// на глаз: иначе значки бафов налезали бы на подсветку хода (и разъехались бы снова,
+// если размеры кольца когда-нибудь поменяют).
+const EFFECT_GAP = ACTIVE_RING_OFFSET + ACTIVE_RING_WIDTH / 2 + 5;
+
 // Как рисуется одна фишка: кружок с цветом или картинкой + имя + HP + эффекты.
 function TokenShape({
   tk,
@@ -105,9 +114,9 @@ function TokenShape({
       {/* Чей сейчас ход: широкое золотое кольцо снаружи фишки */}
       {isActive && (
         <Circle
-          radius={r + 7}
+          radius={r + ACTIVE_RING_OFFSET}
           stroke="#d4af37"
-          strokeWidth={5}
+          strokeWidth={ACTIVE_RING_WIDTH}
           shadowColor="#d4af37"
           shadowBlur={16}
           shadowOpacity={1}
@@ -126,7 +135,7 @@ function TokenShape({
           align="center"
           width={240}
           offsetX={120}
-          y={-r - effFont - 2 - i * (effFont + 4)}
+          y={-r - effFont - EFFECT_GAP - i * (effFont + 4)}
           shadowColor="black"
           shadowBlur={4}
           shadowOpacity={1}

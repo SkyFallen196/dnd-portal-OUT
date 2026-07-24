@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { API_URL, api, errorMessage } from "../api/client";
 import type { MapImage, Member, RoomDetail, Token } from "../api/types";
 
@@ -13,6 +14,11 @@ const COLORS = ["#c0392b", "#2980b9", "#27ae60", "#8e44ad", "#f39c12", "#16a085"
 // Те же границы размера фишки, что и на сервере (schemas.py: MIN_TOKEN_SIZE/MAX_TOKEN_SIZE).
 const MIN_SIZE = 0.4;
 const MAX_SIZE = 5;
+
+// Подпись строки в редакторе фишки. Ширина — по самому длинному слову («Размер»),
+// иначе оно вылезает за колонку и его накрывает соседняя кнопка. flexShrink: 0 —
+// чтобы подпись не сжимало, когда в строке много кнопок.
+const ROW_LABEL: CSSProperties = { width: 54, flexShrink: 0 };
 
 // Панель мастера: карта, фишки на ней, управление участниками.
 export default function DMPanel({ room, tokens, onReload }: Props) {
@@ -384,7 +390,7 @@ export default function DMPanel({ room, tokens, onReload }: Props) {
               <div style={{ padding: "8px 4px 4px" }}>
                 {/* HP */}
                 <div className="row" style={{ gap: 4, marginBottom: 6, alignItems: "center" }}>
-                  <span className="muted" style={{ width: 34 }}>HP</span>
+                  <span className="muted" style={ROW_LABEL}>HP</span>
                   <button className="secondary small" onClick={() => adjustHp(t, -5)}>−5</button>
                   <button className="secondary small" onClick={() => adjustHp(t, -1)}>−1</button>
                   {/* Клик по числу — вписать точное HP. key сбрасывает поле, когда HP
@@ -404,7 +410,7 @@ export default function DMPanel({ room, tokens, onReload }: Props) {
                   <button className="secondary small" onClick={() => adjustHp(t, 5)}>+5</button>
                 </div>
                 <div className="row" style={{ gap: 6, marginBottom: 6, alignItems: "center" }}>
-                  <span className="muted" style={{ width: 34 }}>Max</span>
+                  <span className="muted" style={ROW_LABEL}>Max</span>
                   <input
                     type="number"
                     min={1}
@@ -415,14 +421,14 @@ export default function DMPanel({ room, tokens, onReload }: Props) {
                 </div>
                 {/* Размер */}
                 <div className="row" style={{ gap: 6, marginBottom: 8, alignItems: "center" }}>
-                  <span className="muted" style={{ width: 34 }}>Размер</span>
+                  <span className="muted" style={ROW_LABEL}>Размер</span>
                   <button className="secondary small" onClick={() => adjustSize(t, -0.25)}>−</button>
                   <b style={{ minWidth: 44, textAlign: "center" }}>×{(t.size || 1).toFixed(2)}</b>
                   <button className="secondary small" onClick={() => adjustSize(t, 0.25)}>+</button>
                 </div>
                 {/* Слой: чтобы фишку не накрывала соседняя в толкучке */}
                 <div className="row" style={{ gap: 6, marginBottom: 8, alignItems: "center" }}>
-                  <span className="muted" style={{ width: 34 }}>Слой</span>
+                  <span className="muted" style={ROW_LABEL}>Слой</span>
                   <button
                     className="secondary small"
                     title="Поднять над остальными фишками"
